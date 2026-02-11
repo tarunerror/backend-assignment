@@ -1,0 +1,56 @@
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: credit_approval_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - POSTGRES_DB=credit_approval_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DEBUG=True
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - .:/app
+
+  celery:
+    build: .
+    entrypoint: []
+    command: celery -A credit_approval worker --loglevel=info
+    environment:
+      - POSTGRES_DB=credit_approval_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - .:/app
+
+volumes:
+  postgres_data:
